@@ -65,7 +65,6 @@ services:
     depends_on:
       - db
     environment:
-      - DEBUG=1  # remove this line to turn DEBUG off
       - DATABASE_URL=mongodb://db:27017/monitoring
       - AUTH_REQUIRED=False
       - ADMIN_USERS=admin@alerta.io
