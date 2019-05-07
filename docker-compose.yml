@@ -65,10 +65,10 @@ services:
     depends_on:
       - db
     environment:
+      - DEBUG=1
       - DATABASE_URL=mongodb://db:27017/monitoring
-      - AUTH_REQUIRED=False
-      - ADMIN_USERS=admin@alerta.io
-      - ALLOWED_EMAIL_DOMAIN=${ALLOWED_EMAIL_DOMAIN:-*}
+      - AUTH_REQUIRED=True
+      - ADMIN_USERS=admin@alerta.io,devops@alerta.io
       - PLUGINS=reject,heartbeat,blackout,prometheus
       - INSTALL_PLUGINS=prometheus
       - ALERTMANAGER_API_URL=http://alertmanager:9093
