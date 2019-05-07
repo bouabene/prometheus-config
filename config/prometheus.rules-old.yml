@@ -1,0 +1,182 @@
+groups:
+
+- name: node_common
+  interval: 30s
+  rules:
+
+  - alert: processor_usage_too_high
+    expr: |
+      ((sum(node_cpu{mode=~"^(?:^(?:user|nice|system|irq|softirq|steal|idle|iowait)$)$"}) by (instance, job)) - (sum(node_cpu{mode=~"^(?:^(?:idle|iowait)$)$"}) by (instance, job))) / (sum(node_cpu{mode=~"^(?:^(?:user|nice|system|irq|softirq|steal|idle|iowait)$)$"}) by (instance, job)) * 100 > 95
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      description: 'Instance {{ $labels.instance }} of job {{ $labels.job }} has processor above 95% (current value: {{ printf "%.2f" $value }}%) for over 5 minutes'
+      summary: 'Processor usage above 95%'
+
+  - alert: swap_usage_above_50_percent
+    expr: |
+      (((node_memory_SwapTotal - node_memory_SwapFree) / node_memory_SwapTotal) * 100) > 50
+    for: 1h
+    labels:
+      severity: moderate
+    annotations:
+      description: 'Instance {{ $labels.instance }} of job {{ $labels.job }} has swap usage above 20% (current value: {{ printf "%.2f" $value }}%) for over 1 hour'
+      summary: 'Swap usage above 20%'
+
+  - alert: memory_usage_above_90_percent
+    expr: |
+      (((node_memory_MemTotal - node_memory_MemFree - node_memory_Cached) / (node_memory_MemTotal) * 100)) > 95
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      description: 'Instance {{ $labels.instance }} of job {{ $labels.job }} has memory usage above 90% (current value: {{ printf "%.2f" $value }}%) for over 5 minutes'
+      summary: 'Memory usage above 90%'
+
+  - alert: node_down
+    expr: |
+      up == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      description: 'Instance {{ $labels.instance }} of job {{ $labels.job }} has been down for over 1 minute'
+      summary: 'Node down'
+
+- name: node_predictions
+  interval: 30s
+  rules:
+
+  - record: instance:fd_utilization
+    expr: |
+      process_open_fds / process_max_fds
+  - alert: file_descriptors_exhausted_in_4_hours
+    expr: |
+      predict_linear(instance:fd_utilization[1h], 4 * 3600) > 1
+    for: 10m
+    labels:
+      severity: critical
+    annotations:
+      description: 'Instance {{ $labels.instance }} of job {{ $labels.job }} will have file descriptors exhausted in 4 hours'
+      summary: 'File descriptors will be exhausted soon'
+
+  - alert: disk_space_exhausted_in_8_hours
+    expr: |
+      predict_linear(node_filesystem_free[1h], 8 * 3600) < 0
+    for: 20m
+    labels:
+      severity: moderate
+    annotations:
+      description: 'Instance {{ $labels.instance }} of job {{ $labels.job }} will have disk space exhausted in 8 hours'
+      summary: 'Disk space will be exhausted soon'
+
+  - alert: disk_space_almost_exhausted
+    expr: |
+      node_filesystem_avail / node_filesystem_size * 100 <= 10
+    for: 15m
+    labels:
+      severity: critical
+    annotations:
+      description: 'Instance {{ $labels.instance }} of job {{ $labels.job }} has disk space less than 10% (current value: {{ printf "%.2f" $value }}%) for 15 minutes'
+      summary: 'Disk space almost exhausted'
+
+- name: service
+  interval: 15s
+  rules:
+
+  - alert: service_down
+    expr: |
+      {__name__=~"^(?:[^_]+_up)$"} == 0
+    for: 3m
+    labels:
+      severity: critical
+    annotations:
+      description: 'Instance {{ $labels.instance }} of job {{ $labels.job }} has been down for over 3 minutes'
+      summary: 'Service down'
+
+  - alert: service_flapping
+    expr: |
+      changes({__name__=~"^(?:[^_]+_up)$"}[5m]) > 5 or (changes({__name__=~"^(?:[^_]+_up)$"}[60m]) > 15 unless changes({__name__=~"^(?:[^_]+_up)$"}[30m]) < 7)
+    labels:
+      severity: critical
+    annotations:
+      description: 'Instance {{ $labels.instance }}: Service {{ $labels.name }} is flapping'
+      summary: 'Service flapping'
+
+- name: systemd_unit
+  interval: 15s
+  rules:
+
+  - alert: systemd_unit_failed
+    expr: |
+      node_systemd_unit_state{state="failed"} > 0
+    for: 3m
+    labels:
+      severity: critical
+    annotations:
+      description: 'Instance {{ $labels.instance }}: Service {{ $labels.name }} failed'
+      summary: 'Systemd unit failed'
+
+  - alert: systemd_unit_flapping
+    expr: |
+      changes(node_systemd_unit_state{state="active"}[5m]) > 5 or (changes(node_systemd_unit_state{state="active"}[60m]) > 15 unless changes(node_systemd_unit_state{state="active"}[30m]) < 7)
+    labels:
+      severity: critical
+    annotations:
+      description: 'Instance {{ $labels.instance }}: Service {{ $labels.name }} flapping'
+      summary: 'Systemd unit flapping'
+
+- name: mysql
+  interval: 30s
+  rules:
+
+  - record: instance:mysql_estimated_max_used_mem_size
+    expr: |
+      (mysql_global_variables_key_buffer_size + mysql_global_variables_query_cache_size + mysql_global_variables_tmp_table_size + mysql_global_variables_innodb_buffer_pool_size + (mysql_global_variables_innodb_additional_mem_pool_size or up * 0) + mysql_global_variables_innodb_log_buffer_size + (mysql_global_variables_max_connections * (mysql_global_variables_sort_buffer_size + mysql_global_variables_read_buffer_size + mysql_global_variables_read_rnd_buffer_size + mysql_global_variables_join_buffer_size + mysql_global_variables_thread_stack + mysql_global_variables_binlog_cache_size)))
+  - record: job:mysql_transactions:rate5m
+    expr: |
+      sum(rate(mysql_global_status_commands_total{command=~"(commit|rollback)"}[5m])) without(command)
+  - alert: mysql_innodb_log_waits
+    expr: |
+      rate(mysql_global_status_innodb_log_waits[5m]) > 10
+    labels:
+      severity: critical
+    annotations:
+      description: 'The MySQL InnoDB logs are waiting for disk at a rate of {{ printf "%.2f" $value }} per second for over 5 minutes'
+      summary: 'MySQL InnoDB log waits'
+
+- name: ntp
+  interval: 15s
+  rules:
+
+  - alert: ntp_drifting
+    expr: |
+      node_ntp_drift_seconds > 0.05
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      description: 'The NTP drifting has been too high for over 1 minute'
+      summary: 'NTP drifting too high'
+
+  - alert: ntp_drifting
+    expr: |
+      node_ntp_drift_seconds > 0.01
+    for: 1m
+    labels:
+      severity: moderate
+    annotations:
+      description: 'The NTP has been drifting for over 1 minute'
+      summary: 'NTP drift'
+
+  # API request rate alert
+  - alert: api_requests_high
+    expr: rate(alerta_alerts_queries_count{instance="alerta:8080",job="alerta"}[5m]) > 5
+    labels:
+      service: Alerta,Platform
+      severity: major
+    annotations:
+      description: API request rate of {{ $value | printf "%.1f" }} req/s is high (threshold 5 req/s)
+      summary: API request rate high
+      value: '{{ humanize $value }} req/s'
