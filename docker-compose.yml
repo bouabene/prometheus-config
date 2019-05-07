@@ -70,7 +70,6 @@ services:
       - AUTH_REQUIRED=True
       - ADMIN_USERS=admin@alerta.io,devops@alerta.io
       - PLUGINS=reject,heartbeat,blackout,prometheus
-      - INSTALL_PLUGINS=prometheus
       - ALERTMANAGER_API_URL=http://alertmanager:9093
     restart: always
     networks:
