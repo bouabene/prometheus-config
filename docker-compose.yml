@@ -68,7 +68,7 @@ services:
       - DEBUG=1
       - DATABASE_URL=mongodb://db:27017/monitoring
       - AUTH_REQUIRED=True
-      - ADMIN_PASSWORD=alerta
+      - ADMIN_PASSWORD=password
       - ADMIN_USERS=admin@alerta.io
       - PLUGINS=reject,heartbeat,blackout,prometheus
       - ALERTMANAGER_API_URL=http://alertmanager:9093

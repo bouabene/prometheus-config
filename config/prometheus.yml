@@ -60,4 +60,4 @@ scrape_configs:
     - targets: ['alerta:8080']
     basic_auth:
       username: admin@alerta.io
-      password: alerta
+      password: password
