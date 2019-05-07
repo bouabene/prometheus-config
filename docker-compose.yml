@@ -76,16 +76,15 @@ services:
     networks:
       - promnet
       - dbnet
+
   grafana:
      image: grafana/grafana:latest
-     container_name: grafana
      ports:
        - "3000:3000"
      volumes:
-       # Data persistency
-       # sudo mkdir -p /srv/docker/grafana/data; chown 472:472 /srv/docker/grafana/data
         - ./data/grafana:/var/lib/grafana
-      networks:
+     restart: always
+     networks:
         - promnet
 
   db:
