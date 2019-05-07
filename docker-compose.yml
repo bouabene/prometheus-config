@@ -59,7 +59,7 @@ services:
       - promnet
 
   alerta:
-    image: alerta/alerta-web:7.1.0
+    image: alerta/alerta-web:7.2.0
     ports:
       - 9080:8080
     depends_on:
