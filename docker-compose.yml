@@ -85,8 +85,8 @@ services:
        # Data persistency
        # sudo mkdir -p /srv/docker/grafana/data; chown 472:472 /srv/docker/grafana/data
         - ./data/grafana:/var/lib/grafana
-    networks:
-      - promnet
+      networks:
+        - promnet
 
   db:
     image: mongo
