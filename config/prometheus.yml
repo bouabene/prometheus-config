@@ -65,6 +65,10 @@ scrape_configs:
     static_configs:
     - targets: ['10.254.1.236:4000']
 
+  - job_name: mssql-telegraf 
+    static_configs:
+    - targets: ['10.254.1.83:9126']
+
 
   - job_name: alerta
     metrics_path: /api/management/metrics
