@@ -57,6 +57,11 @@ scrape_configs:
     static_configs:
     - targets: ['10.254.1.236:9100']
 
+  - job_name: kong
+    static_configs:
+    - targets: ['kong.10.254.1.173.nip.io:8001']
+
+
   - job_name: alerta
     metrics_path: /api/management/metrics
     static_configs:
